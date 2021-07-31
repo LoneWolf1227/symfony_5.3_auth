@@ -1,0 +1,68 @@
+version: '3.3'
+
+networks:
+  authorithation:
+
+services:
+  nginx_auth_service:
+    image: nginx
+    container_name: nginx_auth_container
+    restart: always
+    ports:
+      - "8081:80"
+    volumes:
+      - ./app:/var/www/authorithation/app
+      - ./devops/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php_auth_service
+      - mysql8_auth_service
+    networks:
+      - authorithation
+
+  # php
+  php_auth_service:
+    build:
+      context: .
+      dockerfile: ./devops/php/Dockerfile
+      args:
+        - USER_ID
+        - GROUP_ID
+    container_name: php_auth_container
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./app:/var/www/authorithation/app
+    networks:
+      - authorithation
+
+  # mysql
+  mysql8_auth_service:
+    image: mysql:8
+    container_name: mysql8_auth_container
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./devops/mysql:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_DATABASE: auth
+      MYSQL_PASSWORD: 123456
+      MYSQL_ROOT_PASSWORD: 123456
+    networks:
+      - authorithation
+
+  # phpMyAdmin
+  phpMyAdmin_auth_service:
+    container_name: phpMyAdmin_auth_container
+    image: phpmyadmin/phpmyadmin:5.0.1
+    depends_on:
+      - mysql8_auth_service
+    environment:
+      PMA_HOST: mysql8_auth_service
+      PMA_PORT: 3306
+    ports:
+      - "7777:80"
+    logging:
+      driver: none
+    networks:
+      - authorithation
